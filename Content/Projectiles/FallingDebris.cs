@@ -106,7 +106,7 @@ namespace RealisticEarthquake.Content.Projectiles
             {
                 SoundEngine.PlaySound(SoundID.Dig, Projectile.position);
 
-                // Облако пыли при разрушении (пункт 2)
+                // Облако пыли при разрушении
                 for (int i = 0; i < 18; i++)
                 {
                     Dust d = Dust.NewDustDirect(Projectile.position - new Vector2(8, 8), Projectile.width + 16, Projectile.height + 16, mat.DustType,
@@ -114,14 +114,7 @@ namespace RealisticEarthquake.Content.Projectiles
                     d.noGravity = Main.rand.NextBool();
                 }
 
-                // Дебафф "пыльная завеса" всем игрокам поблизости от места падения
-                foreach (Player player in Main.ActivePlayers)
-                {
-                    if (Vector2.Distance(player.Center, Projectile.Center) < 250f)
-                    {
-                        player.AddBuff(ModContent.BuffType<DustyHazeDebuff>(), 180); // 3 секунды
-                    }
-                }
+                // Дебафф пыльной завесы удалён, так как визуальный эффект убран
             }
 
             Projectile.Kill();

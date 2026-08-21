@@ -266,7 +266,7 @@ namespace RealisticEarthquake.Common.Systems
         private void HandleAmbientSound()
         {
             if (Main.dedServ)
-                return; // на выделенном сервере звука всё равно нет
+                return;
 
             Player player = Main.LocalPlayer;
             if (player == null || !player.active)
@@ -304,7 +304,6 @@ namespace RealisticEarthquake.Common.Systems
                     }
                     else
                     {
-                        // На поверхности само землетрясение не ощущается - только приглушённый гул (по просьбе).
                         desiredKind = "rumble";
                         desiredStyle = EarthquakeSounds.Rumble;
                         targetVolume = 0.55f * SurfaceVolumeMultiplier;
@@ -312,19 +311,19 @@ namespace RealisticEarthquake.Common.Systems
                     break;
 
                 default:
-                    lastAmbientKind = null;
-                    ambientTickCounter = 0;
+                    if (lastAmbientKind != null)
+                    {
+                        lastAmbientKind = null;
+                        ambientTickCounter = 0;
+                    }
                     return;
             }
 
-            ambientTickCounter++;
-
-            // Раз в ~1.3 сек для гула и раз в ~1.6 сек для основного грохота переигрываем сэмпл заново -
-            // так имитируем непрерывное звучание без необходимости держать ссылку на активный проигрыватель.
-            int replayInterval = desiredKind == "quake" ? 96 : 80;
+            // === ИСПРАВЛЕНИЕ: Проигрываем звук ТОЛЬКО при смене состояния (kindChanged) ===
+            // Это предотвращает перезапуск длинного звукового файла каждые 1.3 секунды.
             bool kindChanged = lastAmbientKind != desiredKind;
 
-            if (kindChanged || ambientTickCounter >= replayInterval)
+            if (kindChanged)
             {
                 ambientTickCounter = 0;
                 lastAmbientKind = desiredKind;
