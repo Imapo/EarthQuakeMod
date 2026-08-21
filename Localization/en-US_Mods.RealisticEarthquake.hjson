@@ -1,0 +1,81 @@
+Buffs: {
+	DustyHazeDebuff: {
+		DisplayName: Dusty Haze Debuff
+		Description: Mods.RealisticEarthquake.Buffs.DustyHazeDebuff.Description
+	}
+}
+
+Items: {
+	Seismograph: {
+		DisplayName: Seismograph
+		Tooltip: ""
+	}
+}
+
+Projectiles.FallingDebris.DisplayName: Falling Debris
+
+Configs: {
+	EarthquakeConfig: {
+		DisplayName: Earthquake Config
+
+		Headers: {
+			ЧастотаЗемлетрясений: ЧастотаЗемлетрясений Header
+			Магнитуда: Магнитуда Header
+			Афтершоки: Афтершоки Header
+			ИнтерфейсИОповещения: ИнтерфейсИОповещения Header
+			УронИРазрушения: УронИРазрушения Header
+		}
+
+		AverageIntervalMinutes: {
+			Label: Average Interval Minutes
+			Tooltip:
+				'''
+				Среднее время между землетрясениями, в минутах.
+				Реальный интервал будет случайно колебаться на ±30% от этого значения, чтобы землетрясения не были предсказуемыми по таймеру.
+				'''
+		}
+
+		MaxMagnitude: {
+			Label: Max Magnitude
+			Tooltip:
+				'''
+				Максимальная случайная магнитуда, которая может выпасть (по 10-балльной шкале).
+				Минимальная магнитуда всегда 3.
+				'''
+		}
+
+		EnableAftershocks: {
+			Label: Enable Aftershocks
+			Tooltip: Включить слабые повторные толчки (афтершоки) после основного землетрясения.
+		}
+
+		AftershockPeriodSeconds: {
+			Label: Aftershock Period Seconds
+			Tooltip: Примерная продолжительность периода афтершоков после основного землетрясения, в секундах.
+		}
+
+		ShowChatMessages: {
+			Label: Show Chat Messages
+			Tooltip: Показывать сообщения в чат о начале и конце землетрясения.
+		}
+
+		ShowDebugButton: {
+			Label: Show Debug Button
+			Tooltip:
+				'''
+				Показывать на экране кнопку ручного вызова землетрясения (удобно для тестирования).
+				Видна только вам, на геймплей других игроков не влияет.
+				'''
+		}
+
+		DebrisDamageMultiplier: {
+			Label: Debris Damage Multiplier
+			Tooltip: Общий множитель урона от падающих обломков. 1.0 - стандартный урон.
+		}
+
+		ImmersiveAudioDucking: {
+			Label: Immersive Audio Ducking
+			Tooltip: Бонус: во время землетрясения приглушать фоновую музыку и делать акцент на гуле/грохоте.
+		}
+	}
+}
