@@ -8,12 +8,22 @@ namespace RealisticEarthquake.Common.Utils
     public static class EarthquakeSounds
     {
         // Нарастающий гул перед началом (пункт 3).
-        public static readonly SoundStyle Rumble = new SoundStyle("RealisticEarthquake/Assets/Sounds/Rumble");
+        public static readonly SoundStyle Rumble = new SoundStyle("RealisticEarthquake/Assets/Sounds/Rumble")
+        {
+            MaxInstances = 1, // Не позволяет звуку перезапускаться поверх себя
+            Volume = 1f
+        };
 
-        // Основной грохот во время активной фазы землетрясения.
-        public static readonly SoundStyle MainQuake = new SoundStyle("RealisticEarthquake/Assets/Sounds/Earthquake");
+        public static readonly SoundStyle MainQuake = new SoundStyle("RealisticEarthquake/Assets/Sounds/Earthquake")
+        {
+            MaxInstances = 1,
+            Volume = 1f
+        };
 
-        // Короткий звук одного афтершока - проигрывается один раз на каждый всплеск.
-        public static readonly SoundStyle AftershockBurst = new SoundStyle("RealisticEarthquake/Assets/Sounds/Aftershock");
+        public static readonly SoundStyle AftershockBurst = new SoundStyle("RealisticEarthquake/Assets/Sounds/Aftershock")
+        {
+            MaxInstances = 1,
+            Volume = 1f
+        };
     }
 }

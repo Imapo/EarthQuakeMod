@@ -41,13 +41,6 @@ namespace RealisticEarthquake.Common.Systems
         private int ticksUntilNextAftershockBurst;
         private int aftershockBurstTicksLeft;
 
-        // --- Фоновый звук (гул или основной грохот), проигрывается локально у каждого клиента.
-        // Вместо хранения ссылки на активный звук (SlotId/ActiveSound) - просто периодически
-        // переигрываем нужный сэмпл с актуальной громкостью. Проще и не зависит от точного API звука
-        // в конкретной сборке tModLoader. ---
-        private int ambientTickCounter;
-        private string lastAmbientKind; // "rumble" или "quake"
-
         public override void OnWorldLoad()
         {
             ResetToIdle();
@@ -129,6 +122,14 @@ namespace RealisticEarthquake.Common.Systems
                 ? Main.rand.Next(3, 6) * TicksPerSecond
                 : Main.rand.Next(10, 16) * TicksPerSecond;
 
+            // === НОВОЕ: Запускаем гул один раз при входе в Warning ===
+            if (!Main.dedServ && Main.LocalPlayer != null && Main.LocalPlayer.active)
+            {
+                bool underground = CeilingScanner.IsUndergroundOrBelow(Main.LocalPlayer);
+                float volume = underground ? 0.15f : 0.15f * SurfaceVolumeMultiplier;
+                SoundEngine.PlaySound(EarthquakeSounds.Rumble with { Volume = volume });
+            }
+
             NetSync();
         }
 
@@ -141,6 +142,21 @@ namespace RealisticEarthquake.Common.Systems
             EarthquakeConfig config = ModContent.GetInstance<EarthquakeConfig>();
             if (config.ShowChatMessages)
                 BroadcastMessage($"Земля начинает трястись под ногами... Магнитуда: {CurrentMagnitude}/10!", new Color(235, 140, 50));
+
+            // === НОВОЕ: Запускаем основной звук один раз при входе в Main ===
+            if (!Main.dedServ && Main.LocalPlayer != null && Main.LocalPlayer.active)
+            {
+                bool underground = CeilingScanner.IsUndergroundOrBelow(Main.LocalPlayer);
+                if (underground)
+                {
+                    SoundEngine.PlaySound(EarthquakeSounds.MainQuake with { Volume = 1f });
+                }
+                else
+                {
+                    // На поверхности играет приглушённый гул вместо основного грохота
+                    SoundEngine.PlaySound(EarthquakeSounds.Rumble with { Volume = 0.55f * SurfaceVolumeMultiplier });
+                }
+            }    
 
             NetSync();
         }
@@ -256,79 +272,8 @@ namespace RealisticEarthquake.Common.Systems
                 CurrentShakeIntensity = Math.Max(CurrentShakeIntensity, burstShake);
             }
 
-            HandleAmbientSound();
+            // HandleAmbientSound() удалён — звуки запускаются один раз при входе в фазу
             HandleWarningDust();
-        }
-
-        // Управляет фоновым звуком: гул (Rumble.ogg) во время предупреждения и на поверхности
-        // во время основной фазы, полноценный грохот (Earthquake.ogg) под землёй во время основной фазы.
-        // Звук периодически переигрывается с актуальной громкостью - без хранения "живой" ссылки на него.
-        private void HandleAmbientSound()
-        {
-            if (Main.dedServ)
-                return;
-
-            Player player = Main.LocalPlayer;
-            if (player == null || !player.active)
-            {
-                lastAmbientKind = null;
-                ambientTickCounter = 0;
-                return;
-            }
-
-            bool underground = CeilingScanner.IsUndergroundOrBelow(player);
-            float depthMultiplier = underground ? 1f : SurfaceVolumeMultiplier;
-
-            string desiredKind;
-            float targetVolume;
-            SoundStyle desiredStyle;
-
-            switch (CurrentState)
-            {
-                case EarthquakeState.Warning:
-                    {
-                        desiredKind = "rumble";
-                        desiredStyle = EarthquakeSounds.Rumble;
-                        float totalWarningTicks = 15f * TicksPerSecond;
-                        float progress = 1f - MathHelper.Clamp(TicksRemainingInState / totalWarningTicks, 0f, 1f);
-                        targetVolume = MathHelper.Lerp(0.15f, 0.9f, progress) * depthMultiplier;
-                        break;
-                    }
-
-                case EarthquakeState.Main:
-                    if (underground)
-                    {
-                        desiredKind = "quake";
-                        desiredStyle = EarthquakeSounds.MainQuake;
-                        targetVolume = 1f;
-                    }
-                    else
-                    {
-                        desiredKind = "rumble";
-                        desiredStyle = EarthquakeSounds.Rumble;
-                        targetVolume = 0.55f * SurfaceVolumeMultiplier;
-                    }
-                    break;
-
-                default:
-                    if (lastAmbientKind != null)
-                    {
-                        lastAmbientKind = null;
-                        ambientTickCounter = 0;
-                    }
-                    return;
-            }
-
-            // === ИСПРАВЛЕНИЕ: Проигрываем звук ТОЛЬКО при смене состояния (kindChanged) ===
-            // Это предотвращает перезапуск длинного звукового файла каждые 1.3 секунды.
-            bool kindChanged = lastAmbientKind != desiredKind;
-
-            if (kindChanged)
-            {
-                ambientTickCounter = 0;
-                lastAmbientKind = desiredKind;
-                SoundEngine.PlaySound(desiredStyle with { Volume = targetVolume });
-            }
         }
 
         private void HandleWarningDust()

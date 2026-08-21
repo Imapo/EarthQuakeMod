@@ -41,13 +41,19 @@ namespace RealisticEarthquake.Content.Projectiles
         {
             Projectile.width = 16;
             Projectile.height = 16;
-            Projectile.hostile = true;   // наносит урон игрокам
-            Projectile.friendly = false;
+            
+            // === ГЛАВНОЕ ИСПРАВЛЕНИЕ ===
+            Projectile.hostile = true;   // Наносит урон игрокам
+            Projectile.friendly = true;  // Наносит урон NPC (врагам)! Без этого флага мобы неуязвимы.
+            
             Projectile.tileCollide = true;
             Projectile.ignoreWater = true;
-            Projectile.penetrate = 1;
-            Projectile.timeLeft = 600; // 10 секунд на существование, если ни во что не попадёт
-            Projectile.aiStyle = -1;   // своя логика ниже
+            Projectile.penetrate = 1;    // Исчезает после первого попадания (в игрока или моба)
+            Projectile.timeLeft = 600;   // 10 секунд на существование
+            Projectile.aiStyle = -1;     // Своя логика
+            
+            // Добавим небольшое отбрасывание, чтобы удар чувствовался визуально
+            Projectile.knockBack = 2.5f; 
         }
 
         private const float Gravity = 0.35f;
