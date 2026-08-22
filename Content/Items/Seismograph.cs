@@ -5,14 +5,8 @@ using RealisticEarthquake.Common.Players;
 
 namespace RealisticEarthquake.Content.Items
 {
-    // БОНУС: аксессуар-сейсмограф. Пока надет - показывает на экране обратный отсчёт до следующего
-    // землетрясения и предупреждает о начавшейся фазе гула чуть раньше остальных (см. EarthquakeVisualsSystem).
-    // Текстуру временно переиспользуем от "Золотых часов" (тематически похоже - тоже "прибор с отсчётом").
-    // Замените Texture на свой спрайт, когда он появится: "RealisticEarthquake/Content/Items/Seismograph".
     public class Seismograph : ModItem
     {
-        public override string Texture => "Terraria/Images/Item_" + ItemID.GoldWatch;
-
         public override void SetDefaults()
         {
             Item.width = 20;
@@ -28,12 +22,27 @@ namespace RealisticEarthquake.Content.Items
             player.GetModPlayer<EarthquakePlayer>().HasSeismograph = true;
         }
 
+        public override void UpdateInventory(Player player)
+        {
+            player.GetModPlayer<EarthquakePlayer>().HasSeismograph = true;
+        }
+
         public override void AddRecipes()
         {
+            // === НОВОЕ: Создаём группу "Любые часы" (золотые или платиновые) ===
+            // Это позволяет игроку использовать любые часы, которые есть в его мире
+            RecipeGroup anyWatchGroup = new RecipeGroup(() => $"[{Lang.GetItemNameValue(ItemID.GoldWatch)}/{Lang.GetItemNameValue(ItemID.PlatinumWatch)}]",
+                ItemID.GoldWatch,
+                ItemID.PlatinumWatch
+            );
+            RecipeGroup.RegisterGroup("RealisticEarthquake:AnyWatch", anyWatchGroup);
+
+            // === Основной рецепт ===
             CreateRecipe()
                 .AddIngredient(ItemID.StoneBlock, 15)
                 .AddIngredient(ItemID.IronBar, 5)
-                .AddIngredient(ItemID.GoldWatch, 1)
+                .AddRecipeGroup(anyWatchGroup, 1)  // ← Используем группу вместо конкретного предмета
+                .AddIngredient(ItemID.Lens, 1)     // ← НОВАЯ: Линза для наблюдения
                 .AddTile(TileID.Anvils)
                 .Register();
         }

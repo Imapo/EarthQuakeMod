@@ -7,26 +7,35 @@ namespace RealisticEarthquake.Common.Players
 {
     public class EarthquakePlayer : ModPlayer
     {
-        // Сколько тиков ещё должна держаться "пыльная дымка" перед глазами (для отрисовки в EarthquakeVisualsSystem)
         public int DustyHazeTimeLeft;
-
-        // Бонус: если у игрока есть сейсмограф - показываем предупреждения заранее и точнее.
         public bool HasSeismograph;
 
         public override void ResetEffects()
         {
+            // Сбрасываем каждый кадр. UpdateEquips установит его в true, если предмет в инвентаре.
+            HasSeismograph = false;
+            
             if (DustyHazeTimeLeft > 0)
                 DustyHazeTimeLeft--;
         }
 
-        // Официальный хук tModLoader/vanilla именно для тряски экрана камеры.
+        public override void UpdateEquips()
+        {
+            if (HasSeismograph)
+            {
+                // В 1.4.4 accWatch — это int. 
+                // 4 = платиновые часы. Это говорит игре, что у игрока есть инфо-аксессуар, 
+                // и нужно отрисовать иконку часов и зарезервировать место для текста.
+                Player.accWatch = 4;
+            }
+        }
+
         public override void ModifyScreenPosition()
         {
             float intensity = EarthquakeSystem.CurrentShakeIntensity;
             if (intensity <= 0f)
                 return;
 
-            // Землетрясение ощущается только в подземелье и ниже - на поверхности только гул (без тряски).
             if (!RealisticEarthquake.Common.Utils.CeilingScanner.IsUndergroundOrBelow(Player))
                 return;
 
