@@ -1,14 +1,14 @@
 Buffs: {
 	DustyHazeDebuff: {
-		DisplayName: Dusty Haze Debuff
-		Description: Mods.RealisticEarthquake.Buffs.DustyHazeDebuff.Description
+		DisplayName: Dusty Haze
+		Description: Thick dust clouds your vision
 	}
 }
 
 Items: {
 	Seismograph: {
 		DisplayName: Seismograph
-		Tooltip: ""
+		Tooltip: Displays the time until the next earthquake and its current phase
 	}
 }
 
@@ -19,19 +19,19 @@ Configs: {
 		DisplayName: Earthquake Config
 
 		Headers: {
-			ЧастотаЗемлетрясений: ЧастотаЗемлетрясений Header
-			Магнитуда: Магнитуда Header
-			Афтершоки: Афтершоки Header
-			ИнтерфейсИОповещения: ИнтерфейсИОповещения Header
-			УронИРазрушения: УронИРазрушения Header
+			Frequency: Frequency
+			Magnitude: Magnitude
+			Aftershocks: Aftershocks
+			InterfaceAlerts: Interface & Alerts
+			DamageDestruction: Damage & Destruction
 		}
 
 		AverageIntervalMinutes: {
 			Label: Average Interval Minutes
 			Tooltip:
 				'''
-				Среднее время между землетрясениями, в минутах.
-				Реальный интервал будет случайно колебаться на ±30% от этого значения, чтобы землетрясения не были предсказуемыми по таймеру.
+				Average time between earthquakes, in minutes.
+				The actual interval will randomly vary by ±30% from this value, so earthquakes aren't predictable by a fixed timer.
 				'''
 		}
 
@@ -39,45 +39,68 @@ Configs: {
 			Label: Max Magnitude
 			Tooltip:
 				'''
-				Максимальная случайная магнитуда, которая может выпасть (по 10-балльной шкале).
-				Минимальная магнитуда всегда 3.
+				The maximum random magnitude that can occur (on a 10-point scale).
+				The minimum magnitude is always 3.
 				'''
 		}
 
 		EnableAftershocks: {
 			Label: Enable Aftershocks
-			Tooltip: Включить слабые повторные толчки (афтершоки) после основного землетрясения.
+			Tooltip: Enable weak repeated tremors (aftershocks) after the main earthquake.
 		}
 
 		AftershockPeriodSeconds: {
 			Label: Aftershock Period Seconds
-			Tooltip: Примерная продолжительность периода афтершоков после основного землетрясения, в секундах.
+			Tooltip: Approximate duration of the aftershock period after the main earthquake, in seconds.
 		}
 
 		ShowChatMessages: {
 			Label: Show Chat Messages
-			Tooltip: Показывать сообщения в чат о начале и конце землетрясения.
+			Tooltip: Show chat messages when an earthquake starts and ends.
 		}
 
 		ShowDebugButton: {
 			Label: Show Debug Button
 			Tooltip:
 				'''
-				Показывать на экране кнопку ручного вызова землетрясения (удобно для тестирования).
-				Видна только вам, на геймплей других игроков не влияет.
+				Show an on-screen button to manually trigger an earthquake (useful for testing).
+				Only visible to you - it doesn't affect other players' gameplay.
 				'''
 		}
 
 		DebrisDamageMultiplier: {
 			Label: Debris Damage Multiplier
-			Tooltip: Общий множитель урона от падающих обломков. 1.0 - стандартный урон.
+			Tooltip: Overall damage multiplier for falling debris. 1.0 is standard damage.
 		}
 
 		ImmersiveAudioDucking: {
 			Label: Immersive Audio Ducking
-			Tooltip: Бонус: во время землетрясения приглушать фоновую музыку и делать акцент на гуле/грохоте.
+			Tooltip: Bonus - duck the background music during an earthquake to emphasize the rumble/roar.
 		}
 	}
 }
 
-InfoDisplays.SeismographInfoDisplay.DisplayName: Seismograph Info Display
+InfoDisplays: {
+	SeismographInfoDisplay: {
+		DisplayName: Seismograph
+		Idle: Seismograph: {0}
+		Warning: Seismograph: RUMBLING! ({0})
+		Main: EARTHQUAKE! (Magnitude {0}/10)
+		Aftershock: Seismograph: aftershocks
+		Unknown: Seismograph: --
+	}
+}
+
+Chat: {
+	QuakeStart: The ground begins to shake beneath your feet... Magnitude: {0}/10!
+	AftershocksStarting: The main tremors are fading... but the ground may still shudder again.
+	QuakeEnded: The earthquake has ended.
+}
+
+UI: {
+	ToggleButtonLabel: EQ
+	PanelTitle: Test Earthquake
+	MagnitudeLabel: Magnitude:
+	TriggerButton: Trigger!
+	TriggerRequestedMessage: "[Test] Requested earthquake of magnitude {0}"
+}

@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Terraria;
 using Terraria.GameContent.UI.Elements;
 using Terraria.ID;
+using Terraria.Localization;
 using Terraria.ModLoader;
 using Terraria.UI;
 using RealisticEarthquake.Common.Systems;
@@ -13,7 +14,20 @@ namespace RealisticEarthquake.Content.UI
     {
         private UIPanel togglePanel;
         private UIPanel expandedPanel;
+
+        // Храним ссылки на текстовые элементы, чтобы обновлять их текст каждый кадр в Update() -
+        // это надёжнее, чем один раз выставить текст в OnInitialize(). OnInitialize() вызывается
+        // очень рано (во время Mod.Load()), когда собственные .hjson-файлы локализации мода
+        // ещё могут быть не до конца прогружены движком - из-за этого Language.GetTextValue(...)
+        // мог не найти перевод именно в этот момент и закешировать неверный текст навсегда.
+        // Обновление в Update() также даёт бонус: кнопка сама переключит язык, если игрок
+        // поменяет язык игры прямо во время сессии, без перезахода.
+        private UIText iconText;
+        private UIText titleText;
+        private UIText subtitleText;
+        private UIText triggerLabelText;
         private UIText magnitudeValueText;
+
         private int selectedMagnitude = 5;
         private bool expanded;
 
@@ -28,7 +42,7 @@ namespace RealisticEarthquake.Content.UI
         {
             // --- Кнопка-переключатель, всегда видна в углу экрана ---
             // ВАЖНО: используем ТОЛЬКО Left.Set(pixels, percent), без HAlign - иначе смещения складываются
-            // и элемент улетает за пределы экрана (именно так и было в предыдущей версии).
+            // и элемент улетает за пределы экрана.
             togglePanel = new UIPanel();
             togglePanel.Width.Set(ToggleWidth, 0f);
             togglePanel.Height.Set(ToggleHeight, 0f);
@@ -39,8 +53,9 @@ namespace RealisticEarthquake.Content.UI
             togglePanel.OnMouseOver += (evt, el) => togglePanel.BackgroundColor = new Color(90, 60, 45);
             togglePanel.OnMouseOut += (evt, el) => togglePanel.BackgroundColor = new Color(60, 40, 30);
 
-            UIText icon = new UIText("EQ", 0.9f) { HAlign = 0.5f, VAlign = 0.5f };
-            togglePanel.Append(icon);
+            // Текст ("...") здесь временный placeholder - реальный перевод подставится уже в первом Update().
+            iconText = new UIText("...", 0.9f) { HAlign = 0.5f, VAlign = 0.5f };
+            togglePanel.Append(iconText);
             Append(togglePanel);
 
             // --- Разворачиваемая панель настроек теста ---
@@ -51,14 +66,14 @@ namespace RealisticEarthquake.Content.UI
             expandedPanel.Left.Set(-(ToggleWidth + RightMargin + PanelWidth + 8f), 1f); // левее кнопки
             expandedPanel.BackgroundColor = new Color(40, 30, 25);
 
-            UIText title = new UIText("Тест землетрясения", 0.8f) { HAlign = 0.5f };
-            title.Top.Set(6, 0f);
-            expandedPanel.Append(title);
+            titleText = new UIText("...", 0.8f) { HAlign = 0.5f };
+            titleText.Top.Set(6, 0f);
+            expandedPanel.Append(titleText);
 
-            UIText subtitle = new UIText("Магнитуда:", 0.75f);
-            subtitle.Top.Set(38, 0f);
-            subtitle.Left.Set(15, 0f);
-            expandedPanel.Append(subtitle);
+            subtitleText = new UIText("...", 0.75f);
+            subtitleText.Top.Set(38, 0f);
+            subtitleText.Left.Set(15, 0f);
+            expandedPanel.Append(subtitleText);
 
             UIText minusBtn = new UIText("[ - ]", 0.9f);
             minusBtn.Top.Set(65, 0f);
@@ -91,9 +106,21 @@ namespace RealisticEarthquake.Content.UI
             triggerBtn.OnMouseOver += (evt, el) => triggerBtn.BackgroundColor = new Color(160, 80, 50);
             triggerBtn.OnMouseOut += (evt, el) => triggerBtn.BackgroundColor = new Color(120, 60, 40);
 
-            UIText triggerLabel = new UIText("Вызвать!", 0.85f) { HAlign = 0.5f, VAlign = 0.5f };
-            triggerBtn.Append(triggerLabel);
+            triggerLabelText = new UIText("...", 0.85f) { HAlign = 0.5f, VAlign = 0.5f };
+            triggerBtn.Append(triggerLabelText);
             expandedPanel.Append(triggerBtn);
+        }
+
+        public override void Update(GameTime gameTime)
+        {
+            base.Update(gameTime);
+
+            // Подставляем актуальный перевод каждый кадр - дёшево (пара коротких строк),
+            // зато гарантированно корректно независимо от порядка загрузки локализации мода.
+            iconText.SetText(Language.GetTextValue("Mods.RealisticEarthquake.UI.ToggleButtonLabel"));
+            titleText.SetText(Language.GetTextValue("Mods.RealisticEarthquake.UI.PanelTitle"));
+            subtitleText.SetText(Language.GetTextValue("Mods.RealisticEarthquake.UI.MagnitudeLabel"));
+            triggerLabelText.SetText(Language.GetTextValue("Mods.RealisticEarthquake.UI.TriggerButton"));
         }
 
         private void UpdateMagnitudeText() => magnitudeValueText.SetText(selectedMagnitude.ToString());
@@ -114,7 +141,7 @@ namespace RealisticEarthquake.Content.UI
             else
                 ModContent.GetInstance<EarthquakeSystem>().ManualTrigger(selectedMagnitude);
 
-            Main.NewText($"[Тест] Запрошено землетрясение магнитудой {selectedMagnitude}", Color.Yellow);
+            Main.NewText(Language.GetTextValue("Mods.RealisticEarthquake.UI.TriggerRequestedMessage", selectedMagnitude), Color.Yellow);
         }
     }
 }

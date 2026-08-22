@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
 using Terraria;
-using Terraria.ID;
+using Terraria.Localization;
 using Terraria.ModLoader;
 using RealisticEarthquake.Common.Players;
 using RealisticEarthquake.Common.Systems;
@@ -21,16 +21,18 @@ namespace RealisticEarthquake.Common.Displays
             displayColor = EarthquakeSystem.CurrentState == EarthquakeState.Main ? Color.OrangeRed : Color.LightGoldenrodYellow;
             displayShadowColor = Color.Black;
 
-            string text = EarthquakeSystem.CurrentState switch
-            {
-                EarthquakeState.Idle => $"Сейсмограф: {FormatTime(EarthquakeSystem.TicksUntilNextEarthquake)}",
-                EarthquakeState.Warning => $"Сейсмограф: ГУЛ! ({FormatTime(EarthquakeSystem.TicksRemainingInState)})",
-                EarthquakeState.Main => $"ЗЕМЛЕТРЯСЕНИЕ! (Магнитуда {EarthquakeSystem.CurrentMagnitude}/10)",
-                EarthquakeState.Aftershock => "Сейсмограф: афтершоки",
-                _ => "Сейсмограф: --"
-            };
+            // Весь текст берётся из файлов локализации (Localization/*.hjson), чтобы одинаково
+            // хорошо работать и на русском, и на английском клиенте - без хардкода строк в коде.
+            const string prefix = "Mods.RealisticEarthquake.InfoDisplays.SeismographInfoDisplay.";
 
-            return text;
+            return EarthquakeSystem.CurrentState switch
+            {
+                EarthquakeState.Idle => Language.GetTextValue(prefix + "Idle", FormatTime(EarthquakeSystem.TicksUntilNextEarthquake)),
+                EarthquakeState.Warning => Language.GetTextValue(prefix + "Warning", FormatTime(EarthquakeSystem.TicksRemainingInState)),
+                EarthquakeState.Main => Language.GetTextValue(prefix + "Main", EarthquakeSystem.CurrentMagnitude),
+                EarthquakeState.Aftershock => Language.GetTextValue(prefix + "Aftershock"),
+                _ => Language.GetTextValue(prefix + "Unknown")
+            };
         }
 
         private static string FormatTime(int ticks)

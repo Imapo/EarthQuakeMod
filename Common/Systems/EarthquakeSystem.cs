@@ -141,7 +141,7 @@ namespace RealisticEarthquake.Common.Systems
 
             EarthquakeConfig config = ModContent.GetInstance<EarthquakeConfig>();
             if (config.ShowChatMessages)
-                BroadcastMessage($"Земля начинает трястись под ногами... Магнитуда: {CurrentMagnitude}/10!", new Color(235, 140, 50));
+                BroadcastMessage("Mods.RealisticEarthquake.Chat.QuakeStart", new Color(235, 140, 50), CurrentMagnitude);
 
             // === НОВОЕ: Запускаем основной звук один раз при входе в Main ===
             if (!Main.dedServ && Main.LocalPlayer != null && Main.LocalPlayer.active)
@@ -173,7 +173,7 @@ namespace RealisticEarthquake.Common.Systems
                 TicksRemainingInState = aftershockPeriodTicksLeft;
 
                 if (config.ShowChatMessages)
-                    BroadcastMessage("Основные толчки стихают... но земля ещё может вздрогнуть.", new Color(180, 200, 140));
+                    BroadcastMessage("Mods.RealisticEarthquake.Chat.AftershocksStarting", new Color(180, 200, 140));
             }
             else
             {
@@ -187,7 +187,7 @@ namespace RealisticEarthquake.Common.Systems
         {
             EarthquakeConfig config = ModContent.GetInstance<EarthquakeConfig>();
             if (config.ShowChatMessages)
-                BroadcastMessage("Землетрясение закончилось.", new Color(140, 220, 140)); // пункт 8
+                BroadcastMessage("Mods.RealisticEarthquake.Chat.QuakeEnded", new Color(140, 220, 140)); // пункт 8
 
             ResetToIdle();
             NetSync();
@@ -383,12 +383,16 @@ namespace RealisticEarthquake.Common.Systems
 
         // ================= ВСПОМОГАТЕЛЬНОЕ =================
 
-        private void BroadcastMessage(string text, Color color)
+        // Принимает КЛЮЧ локализации (не готовый текст!), поэтому у каждого клиента в мультиплеере
+        // сообщение отобразится на ЕГО собственном языке игры (NetworkText.FromKey сам разрешает
+        // ключ в нужный язык на стороне получателя). Раньше здесь передавался готовый русский текст -
+        // из-за этого английские клиенты тоже всегда видели русские сообщения в чате.
+        private void BroadcastMessage(string key, Color color, params object[] args)
         {
             if (Main.netMode == NetmodeID.Server)
-                ChatHelper.BroadcastChatMessage(NetworkText.FromLiteral(text), color);
+                ChatHelper.BroadcastChatMessage(NetworkText.FromKey(key, args), color);
             else
-                Main.NewText(text, color); // пункт 8
+                Main.NewText(Language.GetTextValue(key, args), color); // пункт 8
         }
     }
 }

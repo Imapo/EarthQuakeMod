@@ -1,8 +1,8 @@
 displayName = Realistic Earthquake
-author = You & Claude
-version = 1.0
+author = Imapo
+version = 1.2
 homepage =
-description = Реалистичные землетрясения: гул перед началом, падающие обломки потолка, облака пыли со снижением видимости, афтершоки, случайная магнитуда и ручной вызов для тестов.
+description = Реалистичные землетрясения: гул перед началом, падающие обломки потолка, афтершоки, случайная магнитуда и ручной вызов для тестов.
 modReferences =
 sortAfter =
 sortBefore =
