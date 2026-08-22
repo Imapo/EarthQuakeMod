@@ -22,6 +22,9 @@ namespace RealisticEarthquake.Common.Systems
 
     public class EarthquakeSystem : ModSystem
     {
+        private int treesDestroyedThisQuake = 0;
+        private int maxTreesToDestroyThisQuake = 0;
+        private int ticksUntilNextTreeAttempt = 0;
         // ==== Публичное состояние, читаемое UI и другими системами ====
         public static EarthquakeState CurrentState { get; private set; } = EarthquakeState.Idle;
         public static float CurrentShakeIntensity;
@@ -136,14 +139,20 @@ namespace RealisticEarthquake.Common.Systems
         private void StartMainQuake()
         {
             CurrentState = EarthquakeState.Main;
-            TicksRemainingInState = Main.rand.Next(15, 21) * TicksPerSecond; // 15-20 секунд (пункт 1)
+            TicksRemainingInState = Main.rand.Next(15, 21) * TicksPerSecond;
             ticksUntilNextDebrisSpawn = 0;
+
+            // === НОВОЕ: Определяем, сколько деревьев упадёт за это землетрясение ===
+            treesDestroyedThisQuake = 0;
+            int baseTrees = CurrentMagnitude - 6; // Для 7=1, 8=2, 9=3, 10=4
+            maxTreesToDestroyThisQuake = baseTrees + Main.rand.Next(0, 2); // +0 или +1
+            maxTreesToDestroyThisQuake = Math.Clamp(maxTreesToDestroyThisQuake, 0, 5);
+            ticksUntilNextTreeAttempt = 60; // Первая попытка через 1 секунду
 
             EarthquakeConfig config = ModContent.GetInstance<EarthquakeConfig>();
             if (config.ShowChatMessages)
-                BroadcastMessage("Mods.RealisticEarthquake.Chat.QuakeStart", new Color(235, 140, 50), CurrentMagnitude);
+                BroadcastMessage(Language.GetTextValue("Mods.RealisticEarthquake.Chat.Warning", CurrentMagnitude), new Color(235, 140, 50));
 
-            // === НОВОЕ: Запускаем основной звук один раз при входе в Main ===
             if (!Main.dedServ && Main.LocalPlayer != null && Main.LocalPlayer.active)
             {
                 bool underground = CeilingScanner.IsUndergroundOrBelow(Main.LocalPlayer);
@@ -153,10 +162,9 @@ namespace RealisticEarthquake.Common.Systems
                 }
                 else
                 {
-                    // На поверхности играет приглушённый гул вместо основного грохота
                     SoundEngine.PlaySound(EarthquakeSounds.Rumble with { Volume = 0.55f * SurfaceVolumeMultiplier });
                 }
-            }    
+            }
 
             NetSync();
         }
@@ -213,6 +221,16 @@ namespace RealisticEarthquake.Common.Systems
             }
 
             TickEnvironmentDisruption();
+            // === НОВОЕ: Пытаемся сломать деревья на поверхности при сильном землетрясении ===
+            if (CurrentMagnitude >= 7 && treesDestroyedThisQuake < maxTreesToDestroyThisQuake)
+            {
+                ticksUntilNextTreeAttempt--;
+                if (ticksUntilNextTreeAttempt <= 0)
+                {
+                    TryDestroyOneTreeOnSurface();
+                    ticksUntilNextTreeAttempt = Main.rand.Next(180, 300); // 3-5 секунд между попытками
+                }
+            }
         }
 
         private void RunAftershockTick()
@@ -467,6 +485,99 @@ namespace RealisticEarthquake.Common.Systems
         {
             if (Main.netMode == NetmodeID.Server)
                 EarthquakeNetHandler.SendState();
+        }
+
+        private void TryDestroyOneTreeOnSurface()
+        {
+            // Проверяем, что хотя бы один игрок на поверхности
+            Player surfacePlayer = null;
+            foreach (Player p in Main.ActivePlayers)
+            {
+                if (!CeilingScanner.IsUndergroundOrBelow(p))
+                {
+                    surfacePlayer = p;
+                    break;
+                }
+            }
+
+            if (surfacePlayer == null)
+                return;
+
+            // Ищем дерево в радиусе видимости игрока (50 тайлов = 800 пикселей)
+            int searchRadius = 50;
+            int playerTileX = (int)(surfacePlayer.Center.X / 16f);
+            int playerTileY = (int)(surfacePlayer.Center.Y / 16f);
+
+            // Пытаемся найти дерево до 15 раз
+            for (int attempt = 0; attempt < 15; attempt++)
+            {
+                int offsetX = Main.rand.Next(-searchRadius, searchRadius);
+                int tileX = playerTileX + offsetX;
+
+                if (tileX < 0 || tileX >= Main.maxTilesX)
+                    continue;
+
+                // Ищем поверхность земли в этой точке (идём вниз от позиции игрока)
+                int surfaceY = -1;
+                for (int tileY = playerTileY - 30; tileY < playerTileY + 30; tileY++)
+                {
+                    if (tileY < 0 || tileY >= Main.maxTilesY)
+                        continue;
+
+                    Tile tile = Main.tile[tileX, tileY];
+                    if (tile.HasUnactuatedTile && Main.tileSolid[tile.TileType] && !Main.tileSolidTop[tile.TileType])
+                    {
+                        surfaceY = tileY;
+                        break;
+                    }
+                }
+
+                if (surfaceY == -1)
+                    continue;
+
+                // Проверяем, есть ли дерево на поверхности или выше (максимум 20 блоков вверх)
+                int treeBaseY = -1;
+                for (int tileY = surfaceY - 1; tileY >= surfaceY - 20; tileY--)
+                {
+                    if (tileY < 0)
+                        break;
+
+                    Tile tile = Main.tile[tileX, tileY];
+                    if (tile.HasUnactuatedTile && tile.TileType == TileID.Trees)
+                    {
+                        // Нашли блок дерева! Это основание (самый нижний блок дерева)
+                        treeBaseY = tileY;
+                        break;
+                    }
+                }
+
+                if (treeBaseY == -1)
+                    continue;
+
+                // Нашли дерево! Ломаем его целиком через WorldGen.KillTree
+                WorldGen.KillTile(tileX, treeBaseY, false, false, true);
+                
+                // Визуальные эффекты: земля и трава
+                for (int i = 0; i < 20; i++)
+                {
+                    Dust.NewDustDirect(
+                        new Vector2(tileX * 16, treeBaseY * 16),
+                        32, 32,
+                        Main.rand.NextBool() ? DustID.Dirt : DustID.Grass,
+                        Main.rand.NextFloat(-2f, 2f),
+                        Main.rand.NextFloat(-3f, 0f),
+                        100,
+                        default,
+                        1.2f
+                    );
+                }
+
+                // Звук разрушения
+                SoundEngine.PlaySound(SoundID.Dig, new Vector2(tileX * 16, treeBaseY * 16));
+
+                treesDestroyedThisQuake++;
+                return; // Успешно сломали одно дерево, выходим
+            }
         }
 
         public static void ReceiveState(EarthquakeState state, int magnitude, int ticksRemaining)
