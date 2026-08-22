@@ -278,31 +278,126 @@ namespace RealisticEarthquake.Common.Systems
 
         private void HandleWarningDust()
         {
-            bool activePhase = CurrentState == EarthquakeState.Warning || CurrentState == EarthquakeState.Main;
+            bool activePhase = CurrentState == EarthquakeState.Warning || 
+                               CurrentState == EarthquakeState.Main || 
+                               CurrentState == EarthquakeState.Aftershock;
             if (!activePhase)
                 return;
 
             dustTickTimer++;
 
-            foreach (Player player in Main.ActivePlayers)
+            Player player = Main.LocalPlayer;
+            if (player == null || !player.active)
+                return;
+
+            bool underground = CeilingScanner.IsUndergroundOrBelow(player);
+
+            if (underground)
             {
-                // Пыль с потолка сыпется только там, где вообще ощущается землетрясение - под землёй.
-                if (!CeilingScanner.IsUndergroundOrBelow(player))
-                    continue;
-
-                bool indoors = CeilingScanner.IsIndoors(player);
-                int interval = indoors ? 6 : 16; // в помещении/пещере пыль падает чаще (пункт 4)
-
-                if (dustTickTimer % interval != 0)
-                    continue;
-
-                Vector2 searchOrigin = player.Center + new Vector2(Main.rand.Next(-200, 200), 0);
-                if (CeilingScanner.TryFindCrumblingCeiling(searchOrigin, out Point ceilingTile, out DebrisMaterial mat))
+                // Существующая логика для подземелья: пыль сыпется с потолка
+                foreach (Player p in Main.ActivePlayers)
                 {
-                    Vector2 pos = new Vector2(ceilingTile.X * 16 + 8, ceilingTile.Y * 16 + 16);
-                    Dust.NewDustPerfect(pos, mat.DustType, new Vector2(Main.rand.NextFloat(-0.3f, 0.3f), Main.rand.NextFloat(0.5f, 1.5f)), 150, default, 0.9f);
+                    bool indoors = CeilingScanner.IsIndoors(p);
+                    int interval = indoors ? 6 : 16;
+
+                    if (dustTickTimer % interval != 0)
+                        continue;
+
+                    Vector2 searchOrigin = p.Center + new Vector2(Main.rand.Next(-200, 200), 0);
+                    if (CeilingScanner.TryFindCrumblingCeiling(searchOrigin, out Point ceilingTile, out DebrisMaterial mat))
+                    {
+                        Vector2 pos = new Vector2(ceilingTile.X * 16 + 8, ceilingTile.Y * 16 + 16);
+                        Dust.NewDustPerfect(pos, mat.DustType, new Vector2(Main.rand.NextFloat(-0.3f, 0.3f), Main.rand.NextFloat(0.5f, 1.5f)), 150, default, 0.9f);
+                    }
                 }
             }
+            else
+            {
+                // === НОВОЕ: Пылинки в случайных местах вокруг игрока на поверхности ===
+                // Создаёт эффект вибрации почвы в разных точках, а не только под ногами
+                
+                // Интервал зависит от фазы: чаще в Main, реже в Warning, ещё реже в Aftershock
+                int interval = CurrentState switch
+                {
+                    EarthquakeState.Main => 8,        // ~7.5 раз в секунду
+                    EarthquakeState.Warning => 20,    // ~3 раза в секунду
+                    EarthquakeState.Aftershock => 30, // ~2 раза в секунду
+                    _ => 20
+                };
+
+                if (dustTickTimer % interval == 0)
+                {
+                    // Количество пылинок тоже зависит от фазы
+                    int dustCount = CurrentState switch
+                    {
+                        EarthquakeState.Main => 3,
+                        EarthquakeState.Warning => 2,
+                        EarthquakeState.Aftershock => 1,
+                        _ => 2
+                    };
+
+                    for (int i = 0; i < dustCount; i++)
+                    {
+                        // === Случайная точка в радиусе 300-500 пикселей вокруг игрока ===
+                        float offsetX = Main.rand.NextFloat(-500f, 500f);
+                        
+                        // Начинаем поиск поверхности с точки ВЫШЕ игрока (на 400-600 пикселей выше)
+                        float startY = player.Center.Y - Main.rand.NextFloat(400f, 600f);
+                        float searchX = player.Center.X + offsetX;
+                        
+                        // Ищем поверхность земли: идём вниз по 16 пикселей, пока не найдём твёрдый блок
+                        float surfaceY = FindSurfaceAt(searchX, startY);
+                        
+                        if (surfaceY < Main.maxTilesY * 16f) // Если нашли поверхность
+                        {
+                            Vector2 dustPos = new Vector2(searchX, surfaceY - 4f);
+                            
+                            // Пыль слегка подпрыгивает вверх и разлетается в стороны
+                            Dust d = Dust.NewDustPerfect(
+                                dustPos, 
+                                DustID.Dirt, 
+                                new Vector2(Main.rand.NextFloat(-1f, 1f), Main.rand.NextFloat(-1.5f, -0.5f)), 
+                                150, 
+                                default, 
+                                1f
+                            );
+                            d.noGravity = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        // === НОВЫЙ МЕТОД: Поиск поверхности земли в заданной точке ===
+        // Идёт вниз от startY, пока не найдёт твёрдый блок (не воздух)
+        private float FindSurfaceAt(float worldX, float startY)
+        {
+            int tileX = (int)(worldX / 16f);
+            int tileY = (int)(startY / 16f);
+            
+            // Ограничения: не выходим за границы мира
+            if (tileX < 0 || tileX >= Main.maxTilesX)
+                return Main.maxTilesY * 16f;
+            
+            // Идём вниз максимум на 1000 пикселей (62 тайла)
+            for (int i = 0; i < 62; i++)
+            {
+                if (tileY >= Main.maxTilesY)
+                    return Main.maxTilesY * 16f;
+                
+                Tile tile = Main.tile[tileX, tileY];
+                
+                // Если нашли твёрдый блок (не воздух и не задняя стена)
+                if (tile != null && tile.HasUnactuatedTile && !tile.IsActuated)
+                {
+                    // Возвращаем верхнюю границу этого блока
+                    return tileY * 16f;
+                }
+                
+                tileY++;
+            }
+            
+            return Main.maxTilesY * 16f; // Поверхность не найдена
         }
 
         // ================= СПАВН ОБЛОМКОВ (пункты 1, 6, 7) =================

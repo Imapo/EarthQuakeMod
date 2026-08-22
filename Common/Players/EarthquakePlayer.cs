@@ -36,13 +36,26 @@ namespace RealisticEarthquake.Common.Players
             if (intensity <= 0f)
                 return;
 
-            if (!RealisticEarthquake.Common.Utils.CeilingScanner.IsUndergroundOrBelow(Player))
-                return;
-
-            Main.screenPosition += new Vector2(
-                Main.rand.NextFloat(-intensity, intensity),
-                Main.rand.NextFloat(-intensity, intensity)
-            );
+            if (RealisticEarthquake.Common.Utils.CeilingScanner.IsUndergroundOrBelow(Player))
+            {
+                // Полная тряска под землёй
+                Main.screenPosition += new Vector2(
+                    Main.rand.NextFloat(-intensity, intensity),
+                    Main.rand.NextFloat(-intensity, intensity)
+                );
+            }
+            else
+            {
+                // === НОВОЕ: Лёгкая вибрация на поверхности ===
+                // Берём 15% от подземной интенсивности, но не менее 0.3f и не более 1.5f пикселя.
+                // Это создаёт едва заметное, но ощутимое "эхо" толчков.
+                float surfaceShake = MathHelper.Clamp(intensity * 0.15f, 0.3f, 1.5f);
+                
+                Main.screenPosition += new Vector2(
+                    Main.rand.NextFloat(-surfaceShake, surfaceShake),
+                    Main.rand.NextFloat(-surfaceShake, surfaceShake)
+                );
+            }
         }
     }
 }
